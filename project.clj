@@ -9,5 +9,7 @@
                  [com.github.seancorfield/next.jdbc "1.3.894"]
                  [migratus "1.2.8"]
                  [org.slf4j/slf4j-log4j12 "2.0.9"]
-                 [org.postgresql/postgresql "42.6.0"]]
+                 [org.postgresql/postgresql "42.6.0"]
+                 [prismatic/schema "1.1.12"]
+                 [com.github.seancorfield/honeysql "2.4.1066"]]
   :repl-options {:init-ns banking-app.core})
