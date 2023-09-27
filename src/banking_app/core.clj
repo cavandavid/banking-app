@@ -11,8 +11,9 @@
    [["/account" handlers/create-account]
     [["/account/" :id]
      [["" handlers/view-account]
-      ["/deposit" handlers/deposit]
-      ["/withdraw" handlers/withdraw]]]]])
+      ["/deposit" (handlers/deposit-withdraw :+)]
+      ["/withdraw" (handlers/deposit-withdraw :-)]
+      ["/send" handlers/transfer-money]]]]])
 
 (defn launch-server
   [port]

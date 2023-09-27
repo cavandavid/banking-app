@@ -27,14 +27,22 @@
   (with-open [connection (jdbc/get-connection db-config)]
     (sql/insert! connection table record-data)))
 
+(defn insufficient-balance-error?
+  "Returns truthy value if exception is about insufficient balance
+  else throws exception"
+  [ex]
+  (if-not (clojure.string/includes? (ex-message ex)
+                                    "violates check constraint \"balance_nonnegative\"")
+    (throw ex)
+    :insufficient-balance))
+
 (defn query-data
   "Generic utility function to query data from a table based on where condition"
   [table where-details]
-  (println where-details)
   (with-open [connection (jdbc/get-connection db-config)]
     (sql/find-by-keys connection table where-details)))
 
-(defn manage-money
+(defn deposit-withdraw
   "Function to deposit or withdraw money for a given account"
   [operator amount id]
   (try (first (with-open [connection (jdbc/get-connection db-config)]
@@ -45,17 +53,36 @@
                                  :where [:= :id id]})
                                {:return-keys true})))
        (catch org.postgresql.util.PSQLException ex
-         (if-not (clojure.string/includes? (ex-message ex)
-                                           "violates check constraint")
-           (throw ex)
-           :insufficient-balance))))
+         (insufficient-balance-error? ex))))
+
+(defn transfer-money
+  "Transfers money between two accounts"
+  [amount from to]
+  (try
+    (jdbc/with-transaction [tx db-config]
+      (let [senders-balance (first
+                             (jdbc/execute! tx (hsql/format
+                                                {:update :accounts
+                                                 :set {:balance [:- :balance amount]},
+                                                 :where [:= :id from]})
+                                            {:return-keys true}))
+            _ (jdbc/execute! tx (hsql/format
+                                 {:update :accounts
+                                  :set {:balance [:+ :balance amount]},
+                                  :where [:= :id to]}))]
+        senders-balance))
+    (catch org.postgresql.util.PSQLException ex
+      (insufficient-balance-error? ex))))
 
 (comment
   ;; CRUD With Money
   (insert-data :accounts {:name "Mr Cavan"})
+  (insert-data :accounts {:name "Mr John"})
   (query-data :accounts {:id 1})
-  (manage-money :- 200 1)
+  (deposit-withdraw :+ 200 1)
+  (transfer-money 200 1 2)
 ;; Create a Migration
   (def migration-dir "migrations")
   (def migration-name "initialize-banking-tables")
-  (m/create {:migration-dir migration-dir} migration-name))
+  (m/create {:migration-dir migration-dir} migration-name)
+  )

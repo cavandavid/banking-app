@@ -1,8 +1,6 @@
 (ns banking-app.handlers
   (:require [banking-app.resource :refer [create-resource]]
-            [banking-app.db :refer [insert-data
-                                    query-data
-                                    manage-money]]
+            [banking-app.db :as db]
             [schema.core :as s]))
 
 (def create-account
@@ -13,10 +11,10 @@
       :response
       (fn [ctx]
         (let [{:accounts/keys [id name balance]}
-              (insert-data :accounts
-                           {:name (get-in
-                                   ctx
-                                   [:parameters :body :name])})]
+              (db/insert-data :accounts
+                              {:name (get-in
+                                      ctx
+                                      [:parameters :body :name])})]
 
           {:account-number id
            :name name
@@ -30,35 +28,19 @@
       :response
       (fn [ctx]
         (let [{:accounts/keys [id name balance]}
-              (first (query-data :accounts
-                                 {:id (get-in
-                                       ctx
-                                       [:parameters :path :id])}))]
+              (first (db/query-data :accounts
+                                    {:id (get-in
+                                          ctx
+                                          [:parameters :path :id])}))]
           (if id
             {:account-number id
              :name name
              :balance balance}
             (assoc (:response ctx) :status 404))))}}}))
 
-(def deposit
-  (create-resource
-   {:methods
-    {:post
-     {:parameters {:body {:amount s/Num}
-                   :path {:id s/Int}}
-      :response
-      (fn [ctx]
-        (let [{:accounts/keys [id name balance]}
-              (manage-money :+
-                            (get-in ctx [:parameters :body :amount])
-                            (get-in ctx [:parameters :path :id]))]
-          (if id
-            {:account-number id
-             :name name
-             :balance balance}
-            (assoc (:response ctx) :status 404))))}}}))
-
-(def withdraw
+(defn deposit-withdraw
+  "Handler for managing deposits OR withdrawals for an account"
+  [operation]
   (create-resource
    {:methods
     {:post
@@ -67,9 +49,35 @@
       :response
       (fn [ctx]
         (let [{:accounts/keys [id name balance] :as result}
-              (manage-money :-
-                            (get-in ctx [:parameters :body :amount])
-                            (get-in ctx [:parameters :path :id]))]
+              (db/deposit-withdraw operation
+                                   (get-in ctx [:parameters :body :amount])
+                                   (get-in ctx [:parameters :path :id]))]
+          (cond
+            id
+            {:account-number id
+             :name name
+             :balance balance}
+            (= result :insufficient-balance)
+            (assoc (:response ctx) :status 409)
+            :else
+            (assoc (:response ctx) :status 404))))}}}))
+
+(def transfer-money
+  "Transfers money from one account to another"
+  (create-resource
+   {:methods
+    {:post
+     {:parameters {:body {:amount s/Num
+                          :account-number s/Int}
+                   :path {:id s/Int}}
+      :response
+      (fn [ctx]
+        ;; TODO: Can add check to ensure you cant transfer money to yourself
+        (let [{:keys [amount account-number]} (get-in ctx [:parameters :body])
+              {:accounts/keys [id name balance] :as result}
+              (db/transfer-money amount
+                                 (get-in ctx [:parameters :path :id])
+                                 account-number)]
           (cond
             id
             {:account-number id
