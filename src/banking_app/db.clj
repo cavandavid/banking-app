@@ -60,16 +60,16 @@
   [amount from to]
   (try
     (jdbc/with-transaction [tx db-config]
-      (let [senders-balance (first
-                             (jdbc/execute! tx (hsql/format
-                                                {:update :accounts
-                                                 :set {:balance [:- :balance amount]},
-                                                 :where [:= :id from]})
-                                            {:return-keys true}))
-            _ (jdbc/execute! tx (hsql/format
-                                 {:update :accounts
-                                  :set {:balance [:+ :balance amount]},
-                                  :where [:= :id to]}))]
+      (when-let [senders-balance (first
+                                  (jdbc/execute! tx (hsql/format
+                                                     {:update :accounts
+                                                      :set {:balance [:- :balance amount]},
+                                                      :where [:= :id from]})
+                                                 {:return-keys true}))]
+        (jdbc/execute! tx (hsql/format
+                           {:update :accounts
+                            :set {:balance [:+ :balance amount]},
+                            :where [:= :id to]}))
         senders-balance))
     (catch org.postgresql.util.PSQLException ex
       (insufficient-balance-error? ex))))
