@@ -2,6 +2,7 @@
   (:require [migratus.core :as m]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
+            [next.jdbc.types :as jdbc.types]
             [honey.sql :as hsql]))
 
 (def db-config
@@ -45,13 +46,19 @@
 (defn deposit-withdraw
   "Function to deposit or withdraw money for a given account"
   [operator amount id]
-  (try (first (with-open [connection (jdbc/get-connection db-config)]
-                (jdbc/execute! connection
-                               (hsql/format
-                                {:update :accounts
-                                 :set {:balance [operator :balance amount]},
-                                 :where [:= :id id]})
-                               {:return-keys true})))
+  (try (jdbc/with-transaction [tx db-config]
+         (let [response (jdbc/execute!
+                         tx
+                         (hsql/format
+                          {:update :accounts
+                           :set {:balance [operator :balance amount]},
+                           :where [:= :id id]})
+                         {:return-keys true})]
+            (sql/insert! tx :transactions
+                         {:account_id id :amount amount
+                          :type (jdbc.types/as-other (if (= operator :+)
+                                                       "credit" "debit"))})
+           (first response)))
        (catch org.postgresql.util.PSQLException ex
          (insufficient-balance-error? ex))))
 
@@ -70,12 +77,43 @@
                            {:update :accounts
                             :set {:balance [:+ :balance amount]},
                             :where [:= :id to]}))
+        (sql/insert! tx :transactions
+                         {:account_id from :amount amount
+                          :type (jdbc.types/as-other "transfer")
+                          :recipient_id to})
         senders-balance))
     (catch org.postgresql.util.PSQLException ex
       (insufficient-balance-error? ex))))
 
+(defn get-history
+  "Either returns all or last n transaction records for given account id"
+  [account-id & [last-n]]
+  (let [response (with-open [conn (jdbc/get-connection db-config)]
+      ;; "row_number() over (partition by item_id, region order by category_id desc, date_added desc) as rn#"
+                   (jdbc/execute! conn
+                                  (hsql/format
+                                   (cond-> {:select [:account_id :type :amount :recipient_id
+                                                     [[:raw ["ROW_NUMBER() OVER (ORDER BY created_at) - 1 AS sequence"]]]]
+                                            :from   [[:transactions :t]]
+                                            :where  [:or [:= :t.account_id account-id]
+                                                     [:= :t.recipient_id account-id]]
+                                            :order-by [[:t.created_at :desc]]}
+                                     last-n (merge {:limit last-n})))))]
+    (mapv (fn [{:transactions/keys [account_id type amount recipient_id] :as record}]
+            (cond-> {:sequence (:sequence record)
+                     :description  (case type
+                                     "debit" "withdraw"
+                                     "credit" "deposit"
+                                     "transfer" (if (= recipient_id account-id)
+                                                  (str "recieve from #" account_id)
+                                                  (str "send to #" recipient_id)))}
+              (and (= type "transfer") (= recipient_id account-id)) (assoc :credit amount)
+              (#{"transfer" "debit"} type) (assoc  :debit amount)
+              (= type "credit") (assoc  :credit amount)))
+          response)))
+
 (comment
-  ;; CRUD With Money
+;; CRUD With Money
   (insert-data :accounts {:name "Mr Cavan"})
   (insert-data :accounts {:name "Mr John"})
   (query-data :accounts {:id 1})

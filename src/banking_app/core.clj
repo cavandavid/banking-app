@@ -13,7 +13,8 @@
      [["" handlers/view-account]
       ["/deposit" (handlers/deposit-withdraw :+)]
       ["/withdraw" (handlers/deposit-withdraw :-)]
-      ["/send" handlers/transfer-money]]]]])
+      ["/send" handlers/transfer-money]
+      ["/audit" handlers/audit]]]]])
 
 (defn launch-server
   [port]

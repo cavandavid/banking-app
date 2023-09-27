@@ -4,6 +4,7 @@
             [schema.core :as s]))
 
 (def create-account
+  "Handler for creating account"
   (create-resource
    {:methods
     {:post
@@ -21,6 +22,7 @@
            :balance balance}))}}}))
 
 (def view-account
+  "Handler for retrieving account info"
   (create-resource
    {:methods
     {:get
@@ -87,3 +89,14 @@
             (assoc (:response ctx) :status 409)
             :else
             (assoc (:response ctx) :status 404))))}}}))
+
+(def audit
+  "Returns audit for specified account"
+  (create-resource
+   {:methods
+    {:get
+     {:parameters {:path {:id s/Int}}
+      :response
+      (fn [ctx]
+        ;; TODO: If account does not exist return 404 as right now it returns empty list
+        (db/get-history (get-in ctx [:parameters :path :id])))}}}))
