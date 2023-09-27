@@ -11,6 +11,7 @@
                  [org.slf4j/slf4j-log4j12 "2.0.9"]
                  [org.postgresql/postgresql "42.6.0"]
                  [prismatic/schema "1.1.12"]
+                 [com.mchange/c3p0 "0.9.5.5"]
                  [com.github.seancorfield/honeysql "2.4.1066"]]
   :main ^:skip-aot banking-app.core
   :repl-options {:init-ns banking-app.core})
