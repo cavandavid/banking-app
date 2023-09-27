@@ -1,5 +1,6 @@
 (ns banking-app.resource
-  (:require yada.resource))
+  (:require manifold.stream 
+            yada.resource))
 
 (def model-defaults
   {:produces [{:media-type #{"application/json"}

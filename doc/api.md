@@ -13,3 +13,6 @@ curl  -XPOST -H 'Content-Type: application/json' -d '{"amount":100}' localhost:3
 
 ## Transfer money between accounts
 curl  -XPOST -H 'Content-Type: application/json' -d '{"amount":100, "account-number":2}' localhost:3000/account/1/send
+
+## Audit of an account
+curl localhost:3000/account/1/audit

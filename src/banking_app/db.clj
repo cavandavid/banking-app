@@ -16,7 +16,7 @@
 
 (defn run-migrations
   "Initiliazes the empty tables needed for banking application"
-  [db-config]
+  []
   (let [default-settings {:store :database
                           :migration-dir "migrations"
                           :migration-table-name "bank_migrations"}]
