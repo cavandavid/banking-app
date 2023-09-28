@@ -38,9 +38,7 @@
         combined-settings (assoc default-settings :db db-config)
         completed-migrations (m/completed-list combined-settings)]
     (doseq [n (range (count completed-migrations))]
-      (m/rollback combined-settings)
-      )
-    ))
+      (m/rollback combined-settings))))
 
 (defn insert-data
   "Generic insert data utility function"
@@ -74,10 +72,10 @@
                            :set {:balance [operator :balance amount]},
                            :where [:= :id id]})
                          {:return-keys true})]
-            (sql/insert! tx :transactions
-                         {:account_id id :amount amount
-                          :type (jdbc.types/as-other (if (= operator :+)
-                                                       "credit" "debit"))})
+           (sql/insert! tx :transactions
+                        {:account_id id :amount amount
+                         :type (jdbc.types/as-other (if (= operator :+)
+                                                      "credit" "debit"))})
            (first response)))
        (catch org.postgresql.util.PSQLException ex
          (insufficient-balance-error? ex))))
@@ -98,9 +96,9 @@
                             :set {:balance [:+ :balance amount]},
                             :where [:= :id to]}))
         (sql/insert! tx :transactions
-                         {:account_id from :amount amount
-                          :type (jdbc.types/as-other "transfer")
-                          :recipient_id to})
+                     {:account_id from :amount amount
+                      :type (jdbc.types/as-other "transfer")
+                      :recipient_id to})
         senders-balance))
     (catch org.postgresql.util.PSQLException ex
       (insufficient-balance-error? ex))))
@@ -142,5 +140,4 @@
 ;; Create a Migration
   (def migration-dir "migrations")
   (def migration-name "initialize-banking-tables")
-  (m/create {:migration-dir migration-dir} migration-name)
-  )
+  (m/create {:migration-dir migration-dir} migration-name))

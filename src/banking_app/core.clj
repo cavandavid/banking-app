@@ -8,7 +8,7 @@
 (defonce server (atom nil))
 
 (def routes
-  "All routes including Swagger and a 404 handler"
+  "All routes for our banking application"
   [""
    [["/account" handlers/create-account]
     [["/account/" :id]
