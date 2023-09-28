@@ -1,11 +1,22 @@
 # banking-app
 
-A Clojure library designed to ... well, that part is up to you.
+Backend REST API for a banking application
 
-## Usage
+## **Usage**
 
-FIXME
+The app requires postgresql database up and running
+##### Launch Postgres DB
+`make setup-test-database`
 
+With the postgres database up, you can run the app that listens on port 3000
+
+`lein run`
+
+Test suite can be run by using
+
+`lein test`
+
+See doc/api.md for usage examples
 ## License
 
 Copyright © 2023 FIXME
