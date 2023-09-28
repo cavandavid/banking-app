@@ -1,5 +1,6 @@
 (ns banking-app.resource
-  (:require manifold.stream 
+  (:require manifold.stream
+            yada.yada
             yada.resource))
 
 (def model-defaults

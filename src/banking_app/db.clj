@@ -6,7 +6,7 @@
             [honey.sql :as hsql]
             [next.jdbc.connection :as connection])
   (:import [com.mchange.v2.c3p0 ComboPooledDataSource]))
-
+;; == INFRA ==
 (def db-config
   "FIXME: To be sourced from config file"
   {:dbtype   "postgresql"
@@ -29,10 +29,30 @@
                           :migration-table-name "bank_migrations"}]
     (m/migrate (assoc default-settings :db db-config))))
 
+(defn rollback-migrations
+  "Rollbacks the migrations applied"
+  []
+  (let [default-settings {:store :database
+                          :migration-dir "migrations"
+                          :migration-table-name "bank_migrations"}
+        combined-settings (assoc default-settings :db db-config)
+        completed-migrations (m/completed-list combined-settings)]
+    (doseq [n (range (count completed-migrations))]
+      (m/rollback combined-settings)
+      )
+    ))
+
 (defn insert-data
   "Generic insert data utility function"
   [table record-data]
   (sql/insert! db-pool table record-data))
+
+(defn query-data
+  "Generic utility function to query data from a table based on where condition"
+  [table where-details]
+  (sql/find-by-keys db-pool table where-details))
+
+;; == BUSINESS RELATED FUNCTIONS ==
 
 (defn insufficient-balance-error?
   "Returns truthy value if exception is about insufficient balance
@@ -42,11 +62,6 @@
                                     "violates check constraint \"balance_nonnegative\"")
     (throw ex)
     :insufficient-balance))
-
-(defn query-data
-  "Generic utility function to query data from a table based on where condition"
-  [table where-details]
-  (sql/find-by-keys db-pool table where-details))
 
 (defn deposit-withdraw
   "Function to deposit or withdraw money for a given account"
@@ -103,16 +118,18 @@
                                           :order-by [[:t.created_at :desc]]}
                                    last-n (merge {:limit last-n}))))]
     (mapv (fn [{:transactions/keys [account_id type amount recipient_id] :as record}]
-            (cond-> {:sequence (:sequence record)
-                     :description  (case type
-                                     "debit" "withdraw"
-                                     "credit" "deposit"
-                                     "transfer" (if (= recipient_id account-id)
-                                                  (str "recieve from #" account_id)
-                                                  (str "send to #" recipient_id)))}
-              (and (= type "transfer") (= recipient_id account-id)) (assoc :credit amount)
-              (#{"transfer" "debit"} type) (assoc  :debit amount)
-              (= type "credit") (assoc  :credit amount)))
+            (merge {:sequence (:sequence record)
+                    :description  (case type
+                                    "debit" "withdraw"
+                                    "credit" "deposit"
+                                    "transfer" (if (= recipient_id account-id)
+                                                 (str "recieve from #" account_id)
+                                                 (str "send to #" recipient_id)))}
+                   (cond
+                     (and (= type "transfer") (= recipient_id account-id)) {:credit amount}
+                     (= type "transfer") {:debit amount}
+                     (= type "debit")    {:debit amount}
+                     (= type "credit")   {:credit amount})))
           response)))
 
 (comment

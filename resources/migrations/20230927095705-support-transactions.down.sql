@@ -1,3 +1,3 @@
-drop type transaction_type
+drop table transactions;
 --;;
-drop table transactions
+drop type transaction_type;

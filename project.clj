@@ -12,6 +12,7 @@
                  [org.postgresql/postgresql "42.6.0"]
                  [prismatic/schema "1.1.12"]
                  [com.mchange/c3p0 "0.9.5.5"]
-                 [com.github.seancorfield/honeysql "2.4.1066"]]
+                 [com.github.seancorfield/honeysql "2.4.1066"]
+                 [cheshire "5.12.0"]]
   :main ^:skip-aot banking-app.core
   :repl-options {:init-ns banking-app.core})
