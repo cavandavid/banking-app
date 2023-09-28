@@ -24,7 +24,8 @@
   (when (:close @server)
     ((:close @server)))
   (reset! server (listener routes
-                           {:port port})))
+                           {:port port}))
+  (println "Server listening on" {:port port}))
 
 (defn init
  "Initilizes the server that listens at port 3000 and applies necessary migrations for banking app"
